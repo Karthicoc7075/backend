@@ -1,9 +1,9 @@
 
 
 const   azureConfig = {
-    connectionString: 'DefaultEndpointsProtocol=https;AccountName=studymaterials;AccountKey=gyeiykt852Vz0c+WQDTGw2YaKp2uOoz3Urb0z+ADIvWTMXhasbKXLf8SfLL56qcBI0mO+G9LHD1p+ASt7blnBg==;EndpointSuffix=core.windows.net',
+    connectionString: 'DefaultEndpointsProtocol=https;AccountName=studymaterials;AccountKey=AqxUlgl+uWT9FZA13Z2nWbZ6ne0U5xfCNAa9fZL1QpEdYHOVhJRZzvwjS33Cwj5ogmcFraEWb2gi+AStDdTPng==;EndpointSuffix=core.windows.net',
     storageAccountName: 'studymaterials',
-    storageAccountKey: 'gyeiykt852Vz0c+WQDTGw2YaKp2uOoz3Urb0z+ADIvWTMXhasbKXLf8SfLL56qcBI0mO+G9LHD1p+ASt7blnBg==',
+    storageAccountKey: 'AqxUlgl+uWT9FZA13Z2nWbZ6ne0U5xfCNAa9fZL1QpEdYHOVhJRZzvwjS33Cwj5ogmcFraEWb2gi+AStDdTPng==',
     classImagesContainer:'class-images',
     materialContainer:'material-files',
     materialImagesContainer:'material-images',

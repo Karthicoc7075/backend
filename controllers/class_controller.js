@@ -22,8 +22,9 @@ exports.createClass = async (req, res, next) => {
 
         try {
             await blockBlobClient.upload(req.file.buffer, req.file.size);
-        }
+        }   
         catch (err) {
+            console.log(err);
             throw new CustomError.InternalServerError('Failed to upload image');
         }
 
@@ -54,7 +55,7 @@ exports.getAllClass = async (req, res, next) => {
 
         const classWithImage = classes.map(cls => {
             return {
-                id: cls._id,
+                _id: cls._id,
                 className: cls.className,
                 image: classImagesContainerClient.url + '/' + cls.image
             }
@@ -66,9 +67,27 @@ exports.getAllClass = async (req, res, next) => {
     }
 }
 
+exports.getClass = async (req, res, next) => {
+    const { classId } = req.params
+
+    try {
+        const findClass = await Class.findById({ _id: classId })
+
+        if (!findClass) {
+            throw new CustomError.NotFoundError('Class not found');
+        }
+
+        findClass.image = classImagesContainerClient.url + '/' + findClass.image;
+
+        res.status(200).json({ data: findClass })
+    } catch (err) {
+        next(err)
+    }
+}
+
 exports.updateClass = async (req, res, next) => {
     const { classId } = req.params
-    const { className, image } = req.body
+    const { className, imageId } = req.body
     try {
         const findClass = await Class.findById({ _id: classId })
 
@@ -85,7 +104,7 @@ exports.updateClass = async (req, res, next) => {
         }
         let newImageName ;
         if (req.file) {
-            const imageName = image.split('/').pop();
+            const imageName = imageId.split('/').pop();
             const delteBlockBlobClient = classImagesContainerClient.getBlockBlobClient(imageName);
             await delteBlockBlobClient.delete()
 
@@ -176,7 +195,7 @@ exports.createClassSubject = async (req, res, next) => {
 
 exports.getClassSubjects = async (req, res, next) => {
     const { classId } = req.params
-
+    let isfliterLoop = false;
     try {
         const findClass = await Class.findById({ _id: classId })
 
@@ -186,13 +205,28 @@ exports.getClassSubjects = async (req, res, next) => {
 
 
         const AllSubjects = await Promise.all(findClass.subjects.map(async (subjectId) => {
-            const subject = await Subject.findById(subjectId.toString());
-            subject.image = subjectImagesContainerClient.url + '/' + subject.image;
-            return subject;
+            try {
+                const subject = await Subject.findById(subjectId.toString());
+                if (!subject) {
+                    await Class.findByIdAndUpdate(classId, { $pull: { subjects: subjectId } }, { new: true });
+                    isfliterLoop = true
+                    return null ;
+                }
+                subject.image = subjectImagesContainerClient.url + '/' + subject.image;
+                return subject;
+            } catch (err) {
+                return null;
+            }
         }));
 
+    
+          let   classSubject = AllSubjects.filter(subject => subject != null);
+      
 
-        res.status(200).json({ data: AllSubjects })
+
+
+
+        res.status(200).json({ data:classSubject  })
     } catch (err) {
         next(err)
     }

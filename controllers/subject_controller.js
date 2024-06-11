@@ -33,14 +33,30 @@ exports.createSubject = async (req, res,next) => {
     }
 }
 
-exports.getAllSubject = async (req, res,next) => {
+exports.getSubject = async (req, res,next) => {
+    const { subjectId } = req.params;
     try {
-        
+        const subject = await Subject.findOne({ _id: subjectId });
+        if (!subject) {
+            throw new CustomError.NotFoundError('Subject not found');
+        }
+        subject.image = subjectImagesContainerClient.url + '/' + subject.image;
+        res.status(200).json({ data: subject });
+    } catch (err) {
+        next(err);
+    }
+}
+
+
+
+exports.getAllSubjects = async (req, res,next) => {
+    try {
+        console.log('get all subjects');
         const subjects = await Subject.find();
         
         const subjectsWithImage = subjects.map(subject => {
             return {
-                id: subject._id,
+                _id: subject._id,
                 subjectName: subject.subjectName,
                 image: subjectImagesContainerClient.url + '/' + subject.image
             }
@@ -54,7 +70,7 @@ exports.getAllSubject = async (req, res,next) => {
 
 exports.updateSubject = async (req, res,next) => {
     const { subjectId } = req.params;
-    const { subjectName,image } = req.body;
+    const { subjectName,imageId } = req.body;
     console.log(req.body.subjectName);
     try {
         if(!subjectName){
@@ -78,7 +94,7 @@ exports.updateSubject = async (req, res,next) => {
         let newImageName;
        if(req.file){
          
-        const imageName =  image.split('/').pop();
+        const imageName =  imageId.split('/').pop();
         const delteBlockBlobClient = subjectImagesContainerClient.getBlockBlobClient(imageName);
         await delteBlockBlobClient.delete()
 
@@ -98,6 +114,8 @@ exports.updateSubject = async (req, res,next) => {
         const updatedSubject = await Subject.findByIdAndUpdate({ _id: subjectId },  updateData, { new: true })
          
         updatedSubject.image = subjectImagesContainerClient.url + '/' + updatedSubject.image;
+        
+        
 
         res.status(200).json({ data: updatedSubject, message: 'Subject updated successfully' });
 

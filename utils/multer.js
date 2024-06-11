@@ -6,9 +6,8 @@ const allowedFormats = {
     IMAGE: ['image/jpeg', 'image/png', 'image/gif'],
     DOCUMENT: ['application/pdf', 'application/msword']
 };
-
-const storage = multer.memoryStorage();
-const upload = multer({ storage: storage });
+const storage = multer.memoryStorage()
+const upload = multer({ storage: storage,limits: { fileSize: 1024 * 1024 * 5 }})
 
 function uploadImage(fileFormat) {
     return function(req, res, next) {
@@ -18,26 +17,50 @@ function uploadImage(fileFormat) {
            
             if(req.file){
                 if (!fileFormat.includes(req.file.mimetype)) {
-                    throw new CustomError.BadRequestError('File format not allowed');
+                    throw new CustomError.BadRequestError('Image format not allowed');
                 }
             }
-            if(req.body.image){
-                return next();
-            }
+            
 
-            console.log(req.file)
            
             if (err) {
                 console.log(err);
-                throw new CustomError.BadRequestError('File upload failed');
+                throw new CustomError.BadRequestError('Image upload failed');
             }
 
             if (!req.file) {
-               throw new CustomError.BadRequestError('File is required');
+               throw new CustomError.BadRequestError('Image is required');
             }
-            if (!fileFormat.includes(req.file.mimetype)) {
-                throw new CustomError.BadRequestError('File format not allowed');
+          
+            next();
+          }
+          catch(err){
+            next(err)
+          }
+        });
+    };
+}
+
+function uploadUpdateImage(fileFormat) {
+    return function(req, res, next) {
+        upload.single('file')(req, res, function(err) {
+           
+          try{
+           
+            if(req.file){
+                if (!fileFormat.includes(req.file.mimetype)) {
+                    throw new CustomError.BadRequestError('Image format not allowed');
+                }
             }
+            
+
+          
+            if (err) {
+                console.log(err);
+                throw new CustomError.BadRequestError('Image upload failed');
+            }
+
+            
           
             next();
           }
@@ -89,7 +112,7 @@ function uploadImageandFile() {
 }
 
 
-module.exports = { uploadImage, allowedFormats, uploadImageandFile, };
+module.exports = { uploadImage, allowedFormats, uploadUpdateImage,uploadImageandFile, };
 
 
 

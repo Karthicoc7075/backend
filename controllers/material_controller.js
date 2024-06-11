@@ -76,13 +76,31 @@ exports.createMaterialLink = async (req, res, next) => {
 }
 
 exports.getAllMaterials = async (req, res, next) => {
+    const page = req.query.page  || 0
+    const postLimit  = req.body.limit
     try {
-        const materials = await Material.find({ status: true }).populate('class subject medium');
+        const materials = await Material.find({ status: true })
+        .sort({ createdAt: -1})
+        .limit(postLimit)
+        .skip((page)*postLimit)
+        .populate('class subject medium');
 
-        materials.forEach(material => {
-            material.image = `${materialImagesContainerClient.url}/${material.image}`;
-        });
-        res.status(200).json({ message: 'All materials', data: materials });
+        const totalCount = await Material.countDocuments({ status: true });
+
+
+        const   allMaterials = materials.map((materials)=>{
+            return {
+                _id: materials._id,
+                title: materials.title,
+                status: materials.status,
+                views: materials.views,
+                image: `${materialImagesContainerClient.url}/${materials.image}`,
+                createdAt: materials.createdAt
+            }
+        })
+
+
+        res.status(200).json({ message: 'All materials', data: allMaterials , totalCount});
     } catch (err) {
         next(err);
     }

@@ -13,4 +13,4 @@ materialRouter.put('/update/:materialId', tokenVerify, uploadImageandFile(), upd
 materialRouter.delete('/delete/:materialId', tokenVerify, deleteMaterial);
 materialRouter.put('/updateStatus/:materialId', tokenVerify, updateStatus);
 
-module.exports = materialRouter;
+module.exports = materialRouter;    

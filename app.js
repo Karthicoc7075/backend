@@ -4,10 +4,10 @@ const cors = require('cors');
 const morgan = require('morgan');
 const helmet = require('helmet');
 const app = express();
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 8000;
 
 
-const authRoutes = require('./routes/auth_route'); 
+const dashboardAuthRoutes = require('./routes/dashboard_auth_route'); 
 const classRoutes = require('./routes/class_route');
 const subjectRoutes = require('./routes/subject_route');
 const mediumRoutes = require('./routes/medium_route');
@@ -36,7 +36,7 @@ app.use(helmet());
 app.get('/', (req, res) => {    
     res.send('Welcome to the API');
 }   );
-app.use('/api/v2/auth',authRoutes);
+app.use('/api/v2/dashboard/auth',dashboardAuthRoutes);
 app.use('/api/v2/class',classRoutes);
 app.use('/api/v2/subject',subjectRoutes);
 app.use('/api/v2/medium',mediumRoutes);
