@@ -3,7 +3,8 @@ const mongoose = require('mongoose');
 
 const reportSchema = new mongoose.Schema({
     postId:{
-        type: String,
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Material',
         required: true
     },
     description: {
@@ -14,6 +15,10 @@ const reportSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
         required: true
+    },
+    isSolved: {
+        type: Boolean,
+        default: false
     },
     createdAt: {
         type: Date,

@@ -1,5 +1,5 @@
 const Support = require('../models/support_model');
-
+const User = require('../models/user_model');
 const CustomError = require('../errors');
 
 exports.createSupport = async(req, res,next) => {
@@ -24,11 +24,28 @@ exports.createSupport = async(req, res,next) => {
 
 }
 
-exports.getAllSupports = async(req, res) => {
+exports.getAllSupports = async(req, res,next) => {
     try{
-        const supports = await Support.find();
+        const supports = await Support.find({ isSolved: false });
+        
+        const supportWithUser = await Promise.all(supports.map(async(support) => {
+            const user =await User.findById({_id:support.userId})
+            return {
+                _id:support._id,
+                title:support.title,
+                message:support.message,
+                createdAt:support.createdAt,
+                user:{
+                    _id:user._id,
+                    username : user.username,
+                    email:user.email
+                }
+               
+            }
+        }
+        ))
 
-        res.status(200).send({data:supports})
+        res.status(200).send({data:supportWithUser})
     }catch(err){
         next(err)
     }
@@ -46,6 +63,26 @@ exports.deleteSupport = async(req, res,next) => {
         const deleteSupport = await Support.findByIdAndDelete({_id:supportId}, {new:true})
 
         res.status(200).send({data:deleteSupport, message:'Support deleted successfully'})
+    }
+    catch(err){
+        next(err)
+    }
+
+}
+
+
+exports.solveSupport = async(req, res,next) => {
+    const {supportId} = req.params;
+    try{
+        const support = await Support.findById({_id:supportId})
+        
+        if(!support){
+            throw new CustomError('Support not found')
+        }
+
+        const solveSupport = await Support.findByIdAndUpdate({_id:supportId}, {isSolved:true}, {new:true})
+
+        res.status(200).send({data:solveSupport, message:'Support solved successfully'})
     }
     catch(err){
         next(err)

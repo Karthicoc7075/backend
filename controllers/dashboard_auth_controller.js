@@ -78,6 +78,37 @@ exports.logout = async (req, res) => {
     }
 }
 
-exports.forgetPassword =async(req,res)=>{
+exports.changePassword = async (req, res,next) => {
+    try {
+        const { oldPassword, newPassword } = req.body;
 
+        if (!oldPassword || !newPassword || !username) {
+            throw new CustomError.BadRequestError('All fields are required');
+        }
+
+        
+    
+        
+
+
+        const user = await DashboardUser.findById(req.userId);
+
+
+
+        if (!user) {
+            throw new CustomError.NotFoundError('User not found');
+        }
+
+        const isPasswordValid = await bcrypt.compare(oldPassword, user.password);
+        if (!isPasswordValid) {
+            throw new CustomError.BadRequestError('Old password is incorrect');
+        }
+
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        user.password = hashedPassword;
+        await user.save();
+        return res.status(200).json({ message: 'Password changed successfully', data: null });
+    } catch (error) {
+        next(error)
+    }
 }

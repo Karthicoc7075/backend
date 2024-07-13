@@ -1,10 +1,13 @@
 const Material = require('../models/material_model');
 const CustomError = require('../errors');
 const { materialImagesContainerClient, materialContainerClient } = require('../services/azure/azureService');
+const axios = require('axios');
+const  getFileSize = require('../utils/downloadFile');
 
 exports.createMaterial = async (req, res, next) => {
-    const { title, classId, subjectId, mediumId, fileType, fileLink, fileSize } = req.body;
-
+    const { title, classId, subjectId, mediumId, fileType, fileLink } = req.body;
+    const kilobyte = 1024;
+    const megabyte = kilobyte * 1024;
     try {
         if (!title || !classId || !subjectId || !mediumId || !fileType) {
             throw new CustomError.BadRequestError('All fields are required');
@@ -26,9 +29,20 @@ exports.createMaterial = async (req, res, next) => {
 
         let updatedData;
 
-        if (fileType == 'Link File') {
+        if (fileType == 'linkFile') {
+
+            if(!fileLink){
+                throw new CustomError.BadRequestError('File link is required');
+            }
+    
+        const fileSizeBytes = await getFileSize(fileLink)
+        
+        
+        const fileSize =  fileSizeBytes >= megabyte ? `${(fileSizeBytes / megabyte).toFixed(2)}MB`: `${(fileSizeBytes / kilobyte).toFixed(2)}KB`
+
+
             updatedData = { title, class: classId, subject: subjectId, medium: mediumId, fileType, fileLink, fileSize, image: imageName, createdBy: req.userId }
-        } else if (fileType == "Upload File") {
+        } else if (fileType == "uploadFile") {
             if (!req.files.file || !req.files.image) {
                 throw new CustomError.BadRequestError('File is required');
             }
@@ -42,9 +56,10 @@ exports.createMaterial = async (req, res, next) => {
             } catch (err) {
                 throw new CustomError.InternalServerError('Failed to upload image');
             }
-            const fileSize = `${(file.size / 1024 / 1024).toFixed(2)}MB`;
+            const fileSizeBytes = file.size
+            const fileSize = fileSizeBytes >= megabyte ? `${(fileSizeBytes / megabyte).toFixed(2)}MB`: `${(fileSizeBytes / kilobyte).toFixed(2)}KB`
             updatedData = { title, class: classId, subject: subjectId, medium: mediumId, fileType, fileLink: fileName, fileSize, image: imageName, createdBy: req.userId }
-        }else {
+        } else {
             throw new CustomError.BadRequestError("File type invaild")
         }
         const material = new Material(updatedData);
@@ -75,20 +90,44 @@ exports.createMaterialLink = async (req, res, next) => {
 
 }
 
-exports.getAllMaterials = async (req, res, next) => {
-    const page = req.query.page  || 0
-    const postLimit  = req.body.limit
+exports.getMaterial = async (req, res, next) => {
+    const { materialId } = req.params;
+
     try {
-        const materials = await Material.find({ status: true })
-        .sort({ createdAt: -1})
-        .limit(postLimit)
-        .skip((page)*postLimit)
-        .populate('class subject medium');
+        const material = await Material.findOne({ _id: materialId });
+        if (!material) {
+            throw new CustomError.NotFoundError('Material not found');
+        }
 
-        const totalCount = await Material.countDocuments({ status: true });
+      
+
+        if(material.fileType=='uploadFile'){
+            material.fileLink = `${materialContainerClient.url}/${material.fileLink}`
+        }
+        material.image = `${materialImagesContainerClient.url}/${material.image}`;
+
+        res.status(200).json({ message: 'Get Material', data: material });
+    } catch (err) {
+        next(err);
+    }
+}
+
+exports.getAllMaterials = async (req, res, next) => {
+    const page = req.query.page;
+    const postLimit = req.query.limit;
+
+    
+    try {
+        const materials = await Material.find( )
+            .sort({ createdAt: -1 })
+            .limit(postLimit)
+            .skip((page - 1) * postLimit)
+            .populate('class subject medium');
+
+        const totalCount = await Material.countDocuments();
 
 
-        const   allMaterials = materials.map((materials)=>{
+        const allMaterials = materials.map((materials) => {
             return {
                 _id: materials._id,
                 title: materials.title,
@@ -100,7 +139,7 @@ exports.getAllMaterials = async (req, res, next) => {
         })
 
 
-        res.status(200).json({ message: 'All materials', data: allMaterials , totalCount});
+        res.status(200).json({ message: 'All materials', data: allMaterials, totalCount });
     } catch (err) {
         next(err);
     }
@@ -111,10 +150,10 @@ exports.getAllMaterials = async (req, res, next) => {
 exports.updateMaterial = async (req, res, next) => {
     const { materialId } = req.params;
     const { title, classId, subjectId, mediumId, fileType, fileLink, fileSize, image } = req.body;
-    console.log(title,classId,subjectId,mediumId,fileType,fileLink,fileSize);
+    console.log(title, classId, subjectId, mediumId, fileType, fileLink, fileSize);
     let updateData;
     try {
-        if (!title || !classId || !subjectId || !mediumId  ) {
+        if (!title || !classId || !subjectId || !mediumId) {
             throw new CustomError.BadRequestError('All fields are required');
         }
 
@@ -124,7 +163,7 @@ exports.updateMaterial = async (req, res, next) => {
             throw new CustomError.NotFoundError('Material not found');
         }
 
-        if (findMaterial.fileType === 'Link File') {
+        if (findMaterial.fileType === 'linkFile') {
             let newImageName;
             if (req.files.image) {
                 const imageData = req.files.image[0]
@@ -132,7 +171,7 @@ exports.updateMaterial = async (req, res, next) => {
                 const imageName = findMaterial.image;
                 const delteBlockBlobClient = materialImagesContainerClient.getBlockBlobClient(imageName);
                 await delteBlockBlobClient.delete()
-                 newImageName = `${Date.now()}-${imageData.originalname}`;
+                newImageName = `${Date.now()}-${imageData.originalname}`;
                 const uploadBlockBlobClient = materialImagesContainerClient.getBlockBlobClient(newImageName);
 
                 try {
@@ -143,22 +182,22 @@ exports.updateMaterial = async (req, res, next) => {
                     throw new CustomError.InternalServerError('Failed to upload image');
                 }
 
-                 updateData = { title, class: classId, subject: subjectId, medium: mediumId, fileType, fileLink, fileSize, image: newImageName } 
-            }else{
+                updateData = { title, class: classId, subject: subjectId, medium: mediumId, fileType, fileLink, fileSize, image: newImageName }
+            } else {
                 updateData = { title, class: classId, subject: subjectId, medium: mediumId, fileLink, fileSize }
             }
 
 
-        } else if (findMaterial.fileType === 'Upload File') {
+        } else if (findMaterial.fileType === 'uploadFile') {
 
 
-           
+
             if (req.files.image && req.files.file) {
                 const imageData = req.files.image[0];
                 const fileData = req.files.file[0];
 
-                const imageName =findMaterial.image ;
-                const filename = findMaterial.fileLink ;
+                const imageName = findMaterial.image;
+                const filename = findMaterial.fileLink;
                 const delteImageBlockBlobClient = materialImagesContainerClient.getBlockBlobClient(imageName);
                 const delteFileBlockBlobClient = materialContainerClient.getBlockBlobClient(filename);
                 await delteImageBlockBlobClient.delete()
@@ -177,9 +216,10 @@ exports.updateMaterial = async (req, res, next) => {
                 } catch (err) {
                     throw new CustomError.InternalServerError('Failed to upload image');
                 }
+                
 
                 updateData = { title, class: classId, subject: subjectId, medium: mediumId, fileType, fileLink: newFileName, fileSize, image: newImageName }
-            }else if(req.files.image) {
+            } else if (req.files.image) {
                 const imageData = req.files.image[0];
                 const imageName = findMaterial.image;
                 const delteBlockBlobClient = materialImagesContainerClient.getBlockBlobClient(imageName);
@@ -195,9 +235,9 @@ exports.updateMaterial = async (req, res, next) => {
                     throw new CustomError.InternalServerError('Failed to upload image');
                 }
 
-                 updateData = { title, class: classId, subject: subjectId, medium: mediumId, fileType, fileSize, image: newImageName }
+                updateData = { title, class: classId, subject: subjectId, medium: mediumId, fileType, fileSize, image: newImageName }
 
-            }else if (req.files.file) {
+            } else if (req.files.file) {
                 const fileData = req.files.file[0];
                 const filename = findMaterial.fileLink;
                 const delteBlockBlobClient = materialContainerClient.getBlockBlobClient(filename);
@@ -214,11 +254,11 @@ exports.updateMaterial = async (req, res, next) => {
                 }
 
                 updateData = { title, class: classId, subject: subjectId, medium: mediumId, fileLink: newFileName, fileSize }
-               
+
             }
             else {
                 updateData = { title, class: classId, subject: subjectId, medium: mediumId }
-               
+
             }
 
         } else {
@@ -248,20 +288,20 @@ exports.deleteMaterial = async (req, res, next) => {
             throw new CustomError.NotFoundError('Material not found');
         }
 
-       if(findMaterial.fileType === 'Link File'){
-        const imageName = findMaterial.image;
-        const delteBlockBlobClient = materialImagesContainerClient.getBlockBlobClient(imageName);
-        await delteBlockBlobClient.delete()
-       }
+        if (findMaterial.fileType === 'Link File') {
+            const imageName = findMaterial.image;
+            const delteBlockBlobClient = materialImagesContainerClient.getBlockBlobClient(imageName);
+            await delteBlockBlobClient.delete()
+        }
 
-         if(findMaterial.fileType === 'Upload File'){
+        if (findMaterial.fileType === 'Upload File') {
             const imageName = findMaterial.image;
             const filename = findMaterial.fileLink;
             const delteImageBlockBlobClient = materialImagesContainerClient.getBlockBlobClient(imageName);
             const delteFileBlockBlobClient = materialContainerClient.getBlockBlobClient(filename);
             await delteImageBlockBlobClient.delete()
             await delteFileBlockBlobClient.delete()
-         }
+        }
 
 
 
@@ -277,7 +317,6 @@ exports.deleteMaterial = async (req, res, next) => {
 
 exports.updateStatus = async (req, res, next) => {
     const { materialId } = req.params;
-    const { status } = req.body;
 
     try {
 
@@ -286,8 +325,18 @@ exports.updateStatus = async (req, res, next) => {
             throw new CustomError.NotFoundError('Material with this id does not exists')
         }
 
+        const status = !materialExists.status
+
         const updatedMaterial = await Material.findByIdAndUpdate({ _id: materialId }, { status }, { new: true })
-        res.status(200).json({ message: 'Material status updated successfully', data: updatedMaterial });
+        const data = {
+            _id: updatedMaterial._id,
+            title: updatedMaterial.title,
+            status: updatedMaterial.status,
+            views: updatedMaterial.views,
+            image: `${materialImagesContainerClient.url}/${updatedMaterial.image}`,
+            createdAt: updatedMaterial.createdAt
+        }
+        res.status(200).json({ message: 'Material status updated successfully', data });
     } catch (err) {
         next(err);
     }

@@ -3,10 +3,10 @@ const CustomError = require('../errors');
 const { notificationImageContainerClient } = require('../services/azure/azureService');
 
 exports.createNotification = async(req, res,next) => {
-    const { title, message } = req.body;
+    const { title, description } = req.body;
 
     try{
-        if(!title || !message){
+        if(!title || !description){
             throw new CustomError.BadRequestError('Please provide all the required fields')
         }
 
@@ -21,7 +21,7 @@ exports.createNotification = async(req, res,next) => {
 
         const notification = new Notification({
             title,
-            message,
+            description,
             image:imageName
         });
 

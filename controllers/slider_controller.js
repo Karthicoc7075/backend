@@ -3,13 +3,13 @@ const CustomError = require('../errors');
 const { sliderImageContainerClient } = require('../services/azure/azureService');
 
 exports.createSlider = async (req, res, next) => {
-    const { title, sliderType, newsId, link, materialId, categoryId, classId } = req.body;
+    const { title, sliderType, newsId, link, materialId, classId } = req.body;
     try {
         if (!title || !sliderType) {
             throw new CustomError.BadRequestError('All fields are required');
         }
-        
-         const imageName = `${Date.now()}-${req.file.originalname}`;
+
+        const imageName = `${Date.now()}-${req.file.originalname}`;
         const blobClient = sliderImageContainerClient.getBlockBlobClient(imageName);
         try {
             await blobClient.upload(req.file.buffer, req.file.size);
@@ -19,17 +19,16 @@ exports.createSlider = async (req, res, next) => {
         }
 
         let sliderData;
-
-        if (sliderType == 'news') {
-            sliderData = { title, image: imageName, news: newsId,sliderType };
+        if (sliderType == 'nothing') {
+            sliderData = { title, image: imageName, sliderType };
+        } else if (sliderType == 'news') {
+            sliderData = { title, image: imageName, news: newsId, sliderType };
         } else if (sliderType === 'link') {
-            sliderData = { title, image: imageName, link,sliderType };
-        } else if (sliderType === 'post') {
-            sliderData = { title, image: imageName, post: materialId,sliderType };
-        } else if (sliderType === 'category') {
-            sliderData = { title, image: imageName, category: categoryId,sliderType };
+            sliderData = { title, image: imageName, link, sliderType };
+        } else if (sliderType === 'material') {
+            sliderData = { title, image: imageName, post: materialId, sliderType };
         } else if (sliderType === 'class') {
-            sliderData = { title, image: imageName, class: classId,sliderType };
+            sliderData = { title, image: imageName, class: classId, sliderType };
         } else {
             throw new CustomError.BadRequestError('Invalid slider type');
 
@@ -45,12 +44,27 @@ exports.createSlider = async (req, res, next) => {
     }
 }
 
+exports.getSlider = async (req, res, next) => {
+    const { sliderId } = req.params;
+    try {
+        const findSlider = await Slider.findOne({ _id: sliderId }).sort({ createdAt: -1 });
+
+        if (!findSlider) {
+            throw new CustomError.NotFoundError('Slider not found');
+        }
+
+        findSlider.image = `${sliderImageContainerClient.url}/${findSlider.image}`;
+        res.status(200).json({ data: findSlider });
+    } catch (err) {
+        next(err);
+    }
+}
+
+
 exports.getAllSlider = async (req, res, next) => {
     try {
         const Sliders = await Slider.find();
         const slidersWithImage = Sliders.map((slider) => {
-            slider._id = slider._id.toString();
-            slider.title = slider.title;
             slider.image = `${sliderImageContainerClient.url}/${slider.image}`;
             return slider;
         })
@@ -63,7 +77,7 @@ exports.getAllSlider = async (req, res, next) => {
 
 exports.updateSlider = async (req, res, next) => {
     const { SliderId } = req.params;
-    const { title, image, sliderType, newsId, link, materialId, categoryId, classId } = req.body;
+    const { title, imageId, sliderType, newsId, link, materialId, classId } = req.body;
     try {
         const findSlider = await Slider.findOne({ _id: SliderId })
         if (!findSlider) {
@@ -73,33 +87,32 @@ exports.updateSlider = async (req, res, next) => {
         let newImageName
 
         if (req.file) {
-            const imageName=findSlider.image ;
+            const imageName = imageId.split('/').pop();
             const deleteBlobClient = sliderImageContainerClient.getBlockBlobClient(imageName);
             await deleteBlobClient.delete()
             newImageName = `${Date.now()}-${req.file.originalname}`;
             const blobClient = sliderImageContainerClient.getBlockBlobClient(newImageName);
-           
+
             try {
                 await blobClient.upload(req.file.buffer, req.file.size);
             } catch (err) {
                 throw new CustomError.BadRequestError('Error in uploading image');
             }
-            
+
         }
 
         let sliderUpdateData;
 
-
-        if (sliderType === 'news') {
-            sliderUpdateData = { title, image: newImageName, news: newsId };
+        if(sliderType === 'nothing'){
+            sliderUpdateData = { $unset: { class: findSlider.class, material: findSlider.material, link: findSlider.link, news: findSlider.news }, $set: { title, image: newImageName, sliderType } }
+            } else if (sliderType === 'news') {
+            sliderUpdateData = { $unset: { class: findSlider.class, material: findSlider.material, link: findSlider.link }, $set: { title, image: newImageName, sliderType, news: newsId } }
         } else if (sliderType === 'link') {
-            sliderUpdateData = { title, image: newImageName, link, };
-        } else if (sliderType === 'post') {
-            sliderUpdateData = { title, image: newImageName, post: materialId };
-        } else if (sliderType === 'category') {
-            sliderUpdateData = { title, image: newImageName, category: categoryId };
+            sliderUpdateData = { $unset: { class: findSlider.class, material: findSlider.material, news: findSlider.news }, $set: { title, sliderType, image: newImageName, link } }
+        } else if (sliderType === 'material') {
+            sliderUpdateData = { $unset: { class: findSlider.class, link: findSlider.link, news: findSlider.news }, $set: { title, image: newImageName, sliderType, material: materialId } }
         } else if (sliderType === 'class') {
-            sliderUpdateData = { title, image: newImageName, class: classId };
+            sliderUpdateData = { $unset: { news: findSlider.news, material: findSlider.material, link: findSlider.link }, $set: { title, image: newImageName, sliderType, class: classId } }
         } else {
             throw new CustomError.BadRequestError('Invalid slider type');
 
@@ -123,10 +136,10 @@ exports.deleteSlider = async (req, res, next) => {
             throw new CustomError.NotFoundError('Slider not found');
         }
 
-         const imageName = findSlider.image
-         const deleteBlobClient = sliderImageContainerClient.getBlockBlobClient(imageName)
-         await deleteBlobClient.delete()
-        const deletedSlider = await Slider.findByIdAndDelete({_id:sliderId}, { new: true })
+        const imageName = findSlider.image
+        const deleteBlobClient = sliderImageContainerClient.getBlockBlobClient(imageName)
+        await deleteBlobClient.delete()
+        const deletedSlider = await Slider.findByIdAndDelete({ _id: sliderId }, { new: true })
         res.status(200).json({ message: 'Slider deleted successfully', data: deletedSlider })
 
     } catch (err) {

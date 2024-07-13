@@ -25,6 +25,7 @@ const newsSchema = new mongoose.Schema({
     },
     createdBy: {
         type: String,
+        ref:'dashboard_user',
         required: true
     },
     status: {

@@ -47,13 +47,29 @@ exports.getAllNews = async(req, res) => {
         const news = await News.find();
         
 
-         news.forEach((news) => {
-            news.image = `${newsImageContainerClient.url}/${news.image}`;
-        });
+       const newsWithImage = news.map((news) => {
+              news.image = `${newsImageContainerClient.url}/${news.image}`;
+              return news;
+            })
 
 
 
-        res.status(200).send({data:news})
+        res.status(200).send({data:newsWithImage})
+    }catch(err){
+        next(err)
+    }
+}
+
+exports.getNews = async(req, res,next) => {
+    const { newsId} = req.params;
+
+    try{
+        const findNews = await News.findOne({_id:newsId})
+        if(!findNews){
+            throw new CustomError.BadRequestError('News with this id does not exists')
+        }
+        findNews.image = `${newsImageContainerClient.url}/${findNews.image}`;
+        res.status(200).send({data:findNews})
     }catch(err){
         next(err)
     }
@@ -61,7 +77,7 @@ exports.getAllNews = async(req, res) => {
 
 
 exports.updateNews = async(req, res,next) => {
-    const { title, content,languageId, categoryId,image } = req.body;
+    const { title, content,languageId, categoryId,imageId } = req.body;
     const { newsId} = req.params;
 
     try{
@@ -135,6 +151,7 @@ exports.statusUpdate = async(req, res,next) => {
         }
 
         const updatedNews = await News.findByIdAndUpdate({_id:newsId}, {status},{new:true})
+        updatedNews.image = `${newsImageContainerClient.url}/${updatedNews.image}`;
         res.status(200).send({data:updatedNews, message:'News status updated successfully'})
     }catch(err){
         next(err)

@@ -46,6 +46,7 @@ const materialSchema = new mongoose.Schema({
     },
     createdBy: {
         type: String,
+        ref:'dashboard_user',
         required: true
     },
     createdAt: {

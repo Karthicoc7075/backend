@@ -21,6 +21,7 @@ const reportRouter = require('./routes/report_route');
 const reviewRouter = require('./routes/review_route');
 const supportRouter = require('./routes/support_route');
 const versionRouter = require('./routes/version_route');
+const settingRouter = require('./routes/setting_route');
 
 const errorHandlers = require('./middleware/errorHandlers');
 const connectToDatabase = require('./services/mongodb/mongodbService');
@@ -50,6 +51,7 @@ app.use('/api/v2/report',reportRouter)
 app.use('/api/v2/review',reviewRouter);
 app.use('/api/v2/support',supportRouter);
 app.use('/api/v2/Version',versionRouter);
+app.use('/api/v2/setting',settingRouter);
 app.use(errorHandlers);
 
 async function startServer() {

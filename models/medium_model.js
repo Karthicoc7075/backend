@@ -11,7 +11,7 @@ const mediumSchema = new mongoose.Schema({
         },
         createdBy:{ 
             type: mongoose.Schema.Types.ObjectId,
-            ref: 'User',
+            ref: 'dashboard_user',
             required: true
         },
         createdAt: {

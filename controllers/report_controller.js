@@ -24,15 +24,38 @@ exports.createReport = async(req, res,next) => {
     }
 }
 
-exports.getAllReports = async(req, res) => {
+exports.getAllReports = async(req, res,next) => {
     try{
-        const reports = await Report.find();
+        const reports = await Report.find().populate('postId', '_id title')
+
+
 
         res.status(200).send({data:reports})
     }catch(err){
         next(err)
     }
 }
+
+
+exports.solveReport = async(req, res,next) => {
+    const {reportId} = req.params;
+    try{
+        const report = await Report.findById({_id:reportId})
+        
+        if(!report){
+            throw new CustomError.BadRequestError('Report not found')
+        }
+
+        const solveReport = await Report.findByIdAndUpdate({_id:reportId}, {isSolved:true}, {new:true})
+
+        res.status(200).send({data:solveReport, message:'Report solved successfully'})
+    }
+    catch(err){
+        next(err)
+    }
+
+}
+
 
 exports.deleteReport = async(req, res,next) => {
     const {reportId} = req.params;

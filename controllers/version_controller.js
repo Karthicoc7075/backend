@@ -2,17 +2,18 @@ const Version = require('../models/version_model');
 const CustomError = require('../errors');
 
 exports.createVersion = async(req, res,next) => {
-    const { title, code, message } = req.body;
+    const { title, code, description,status } = req.body;
 
     try{
-        if(!title || !code || !message){
-            throw new CustomError('Please provide all the required fields')
+        if(!title || !code || !description){
+            throw new CustomError.BadRequestError('Please provide all the required fields')
         }
 
         const version = new Version({
             title,
             code,
-            message,
+            description,
+            status
         });
 
         const createVersion =await version.save();
@@ -34,13 +35,28 @@ exports.getAllVersions = async(req, res) => {
     }
 }
 
+exports.getVersion = async(req, res,next) => {
+    const {versionId} = req.params;
+    try{
+        const version = await Version.findById({_id:versionId})
+
+        if(!version){
+            throw new CustomError.BadRequestError('Version not found')
+        }
+
+        res.status(200).send({data:version})
+    }catch(err){
+        next(err)
+    }
+}
+
 exports.updateVersion = async(req, res,next) => {
     const {versionId} = req.params;
-    const { title, code, message,status } = req.body;
+    const { title, code, description,status } = req.body;
 
     try{
 
-        if(!title || !code || !message ){
+        if(!title || !code || !description ){
             throw new CustomError.BadRequestError('All fields required')
         }
 
@@ -50,7 +66,7 @@ exports.updateVersion = async(req, res,next) => {
             throw new CustomError('Version not found')
         }
 
-        const updateVersion = await Version.findByIdAndUpdate({_id:versionId}, {title, code, message,status}, {new:true})
+        const updateVersion = await Version.findByIdAndUpdate({_id:versionId}, {title, code,description,status}, {new:true})
 
         res.status(200).send({data:updateVersion, message:'Version updated successfully'})
     }
@@ -65,7 +81,7 @@ exports.deleteVersion = async(req, res,next) => {
         const version = await Version.findById({_id:versionId})
 
         if(!version){
-            throw new CustomError('Version not found')
+            throw new CustomError.BadRequestError('Version not found')
         }
 
         const deleteVersion = await Version.findByIdAndDelete({_id:versionId}, {new:true})

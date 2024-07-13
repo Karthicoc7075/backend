@@ -1,15 +1,17 @@
 const mongoose = require('mongoose');
 
-const notificationSchema = new mongoose.Schema({
-    title: {
+
+const userSchema = new mongoose.Schema({
+    username: {
         type: String,
         required: true
     },
-    description: {
+    email: {
         type: String,
-        required: true
+        required: true,
+        unique: true
     },
-    image:{
+    password: {
         type: String,
         required: true
     },
@@ -19,6 +21,7 @@ const notificationSchema = new mongoose.Schema({
     }
 });
 
-const Notification = mongoose.model('Notification', notificationSchema);
 
-module.exports = Notification;
+const User = mongoose.model('User', userSchema);
+
+module.exports = User;

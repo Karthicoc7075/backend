@@ -9,7 +9,7 @@ const versionSchema = new mongoose.Schema({
         type: String,
         required: true
     },
-    message:{
+    description:{
         type: String,
         required: true
     },

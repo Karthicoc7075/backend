@@ -1,4 +1,5 @@
 const Language = require('../models/language_model');
+const News = require('../models/news_model');
 const CustomError = require('../errors');
 const { languageImagesContainerClient } = require('../services/azure/azureService');
 
@@ -33,6 +34,20 @@ exports.createLanguage = async (req, res,next) => {
     }
 }
 
+exports.getLanguage = async (req, res,next) => {
+    const { languageId } = req.params;
+    try {
+        const findLanguage = await Language.findOne({ _id: languageId })
+        if (!findLanguage) {
+            throw new CustomError.NotFoundError('Language not found');
+        }
+        findLanguage.image = languageImagesContainerClient.url + '/' + findLanguage.image;
+
+        res.status(200).json({ data: findLanguage });
+    } catch (err) {
+        next(err);
+    }
+}
 exports.getAllLanguage = async (req, res,next) => {
     try {
         
@@ -40,7 +55,7 @@ exports.getAllLanguage = async (req, res,next) => {
         
         const languagesWithImage = languages.map(language => {
             return {
-                id: language._id,
+                _id: language._id,
                 languageName: language.languageName,
                 image: languageImagesContainerClient.url + '/' + language.image
             }
@@ -54,7 +69,7 @@ exports.getAllLanguage = async (req, res,next) => {
 
 exports.updateLanguage = async (req, res,next) => {
     const { languageId } = req.params;
-    const { languageName,image } = req.body;
+    const { languageName,imageId } = req.body;
 
     try {
         if(!languageName){
@@ -77,7 +92,7 @@ exports.updateLanguage = async (req, res,next) => {
          let newImageName;
        if(req.file){
          
-        const imageName = findLanguage.image;
+        const imageName = imageId.split('/').pop();
         const delteBlockBlobClient = languageImagesContainerClient.getBlockBlobClient(imageName);
         await delteBlockBlobClient.delete()
 
@@ -108,11 +123,21 @@ exports.updateLanguage = async (req, res,next) => {
 
 exports.deleteLanguage = async (req, res,next) => {
     const { languageId } = req.params;
+    const {deleteAutomatic} = req.body
+
+    console.log(req.body);  
     try {
         const findLanguage = await Language.findOne({ _id: languageId })
         if (!findLanguage) {
            throw new CustomError.NotFoundError('Language not found');
         }
+
+
+        
+if(deleteAutomatic){
+    const deletedNewsCount = await News.deleteMany({language:languageId})
+    console.log(deletedNewsCount);
+}
 
         const imageName =  findLanguage.image
         const deleteBlockBlobClient = languageImagesContainerClient.getBlockBlobClient(imageName);

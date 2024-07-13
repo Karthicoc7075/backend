@@ -34,13 +34,29 @@ exports.createMedium = async (req, res, next) => {
     }
 }
 
+
+exports.getMedium = async (req, res, next) => {
+    const { mediumId } = req.params;
+    try {
+        const findMedium = await Medium.findOne({ _id: mediumId })
+        if (!findMedium) {
+            throw new CustomError.NotFoundError('Medium not found');
+        }
+        findMedium.image = mediumImagesContainerClient.url + '/' + findMedium.image;
+
+        res.status(200).json({ data: findMedium });
+    } catch (err) {
+        next(err);
+    }
+}
+
 exports.getAllMedium = async (req, res, next) => {
     try {
         const mediums = await Medium.find();
 
         const mediumsWithImage = mediums.map(medium => {
             return { 
-                id: medium._id,
+                _id: medium._id,
                 mediumName: medium.mediumName,
                 image: mediumImagesContainerClient.url + '/' + medium.image
             }
@@ -55,7 +71,7 @@ exports.getAllMedium = async (req, res, next) => {
 
 exports.updateMedium = async (req, res, next) => {
     const { mediumId } = req.params;
-    const { mediumName, image } = req.body;
+    const { mediumName, imageId } = req.body;
     try {
         const findMedium = await Medium.findOne({ _id: mediumId })
         if (!findMedium) {
@@ -72,7 +88,7 @@ exports.updateMedium = async (req, res, next) => {
         let newImageName;
         if (req.file) {
 
-            const imageName = image.split('/').pop();
+            const imageName = imageId.split('/').pop();
             const delteBlockBlobClient = mediumImagesContainerClient.getBlockBlobClient(imageName);
             await delteBlockBlobClient.delete()
 
@@ -91,7 +107,7 @@ exports.updateMedium = async (req, res, next) => {
 
 
         const updatedMedium = await Medium.findByIdAndUpdate({ _id: mediumId }, updateData, { new: true })
-        updateData.image = mediumImagesContainerClient.url + '/' + updateData.image;
+        updatedMedium.image = mediumImagesContainerClient.url + '/' + updatedMedium.image;
         res.status(200).json({ data: updatedMedium, message: 'Medium updated successfully' });
 
     } catch (err) {

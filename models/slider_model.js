@@ -14,9 +14,9 @@ const sliderSchema = new mongoose.Schema({
         type: String,
         required: true
     },
-    category: {
+    class: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Category',
+        ref: 'Class',
     },
     link:{
         type: String,
@@ -25,7 +25,7 @@ const sliderSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'News'
     },
-   post:{
+   material:{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Material'
    },

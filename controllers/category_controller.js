@@ -1,11 +1,12 @@
 const Category = require('../models/category_model');
+const News = require('../models/news_model');
 const CustomError = require('../errors');
-const { categoryImagesContainerClient } = require('../services/azure/azureService');
+const { categoryImagesContainerClient, newsImageContainerClient } = require('../services/azure/azureService');
 
-exports.createCategory = async (req, res,next) => {
+exports.createCategory = async (req, res, next) => {
     const { categoryName } = req.body;
     try {
-        if(!categoryName  ){
+        if (!categoryName) {
             throw new CustomError.BadRequestError('All fields are required');
         }
 
@@ -16,16 +17,16 @@ exports.createCategory = async (req, res,next) => {
         }
 
         const imageName = `${Date.now()}-${req.file.originalname}`;
-            const blockBlobClient = categoryImagesContainerClient.getBlockBlobClient(imageName);
-        
-            try{
-                await blockBlobClient.upload(req.file.buffer, req.file.size);
-            }
-            catch(err){
-                throw new CustomError.BadRequestError('Failed to upload image');
-            }
+        const blockBlobClient = categoryImagesContainerClient.getBlockBlobClient(imageName);
 
-        const createCategory = await Category.create({ categoryName,image:imageName, createdBy: req.userId });
+        try {
+            await blockBlobClient.upload(req.file.buffer, req.file.size);
+        }
+        catch (err) {
+            throw new CustomError.BadRequestError('Failed to upload image');
+        }
+
+        const createCategory = await Category.create({ categoryName, image: imageName, createdBy: req.userId });
         createCategory.image = categoryImagesContainerClient.url + '/' + createCategory.image;
         res.status(201).json({ data: createCategory, message: 'Category created successfully' });
     } catch (err) {
@@ -33,71 +34,86 @@ exports.createCategory = async (req, res,next) => {
     }
 }
 
-exports.getAllCategory = async (req, res,next) => {
+exports.getCategory = async (req, res, next) => {
+    const { categoryId } = req.params;
     try {
-        
+        const findCategory = await Category.findOne({ _id: categoryId })
+        if (!findCategory) {
+            throw new CustomError.NotFoundError('Category not found');
+        }
+        findCategory.image = categoryImagesContainerClient.url + '/' + findCategory.image;
+
+        res.status(200).json({ data: findCategory });
+    } catch (err) {
+        next(err);
+    }
+}
+
+exports.getAllCategory = async (req, res, next) => {
+    try {
+
         const categorys = await Category.find();
-        
+
         const categorysWithImage = categorys.map(category => {
             return {
-                id: category._id,
+                _id: category._id,
                 categoryName: category.categoryName,
                 image: categoryImagesContainerClient.url + '/' + category.image
             }
         })
-         
+
         res.status(200).json({ data: categorysWithImage });
     } catch (err) {
         next(err);
     }
 }
 
-exports.updateCategory = async (req, res,next) => {
+exports.updateCategory = async (req, res, next) => {
     const { categoryId } = req.params;
-    const { categoryName,image } = req.body;
+    const { categoryName, imageId } = req.body;
 
     try {
-        if(!categoryName){
+        if (!categoryName) {
             throw new CustomError.BadRequestError('All fields are required');
         }
-        
+
         const findCategory = await Category.findOne({ _id: categoryId })
-    
+
         if (!findCategory) {
-           throw new CustomError.NotFoundError('Category not found');
+            throw new CustomError.NotFoundError('Category not found');
         }
 
-        if(findCategory.categoryName != categoryName){
+        if (findCategory.categoryName != categoryName) {
             const alreadyExistCategoryName = await Category.findOne({ categoryName })
 
             if (alreadyExistCategoryName) {
                 throw new CustomError.BadRequestError('Category name already exist');
             }
         }
-         
-        let newImageName 
-        
-       if(req.file){
-         
-        const imageName =  findCategory.image;
-        const delteBlockBlobClient = categoryImagesContainerClient.getBlockBlobClient(imageName);
-        await delteBlockBlobClient.delete()
 
-         newImageName = `${Date.now()}-${req.file.originalname}`;
-        const uploadBlockBlobClient = categoryImagesContainerClient.getBlockBlobClient(newImageName);
-    
-        try{
-            await uploadBlockBlobClient.upload(req.file.buffer, req.file.size);
+        let newImageName
+
+        if (req.file) {
+
+            const imageName = imageId.split('/').pop();
+            const delteBlockBlobClient = categoryImagesContainerClient.getBlockBlobClient(imageName);
+            await delteBlockBlobClient.delete()
+
+            newImageName = `${Date.now()}-${req.file.originalname}`;
+            const uploadBlockBlobClient = categoryImagesContainerClient.getBlockBlobClient(newImageName);
+
+            try {
+                await uploadBlockBlobClient.upload(req.file.buffer, req.file.size);
+            }
+            catch (err) {
+                throw new CustomError.InternalServerError('Failed to upload image');
+            }
         }
-        catch(err){
-            throw new CustomError.InternalServerError('Failed to upload image');
-        }
-    }
 
-        const updateData = req.file ? { categoryName, image:newImageName } : { categoryName }
+        const updateData = req.file ? { categoryName, image: newImageName } : { categoryName }
 
-        const updatedCategory = await Category.findByIdAndUpdate({ _id: categoryId },  updateData, { new: true })
-         
+        const updatedCategory = await Category.findByIdAndUpdate({ _id: categoryId }, updateData, { new: true })
+
         updatedCategory.image = categoryImagesContainerClient.url + '/' + newImageName;
 
         res.status(200).json({ data: updatedCategory, message: 'Category updated successfully' });
@@ -108,15 +124,23 @@ exports.updateCategory = async (req, res,next) => {
 
 }
 
-exports.deleteCategory = async (req, res,next) => {
+exports.deleteCategory = async (req, res, next) => {
     const { categoryId } = req.params;
+    const { deleteAutomatic } = req.body;
+
     try {
         const findCategory = await Category.findOne({ _id: categoryId })
         if (!findCategory) {
-           throw new CustomError.NotFoundError('Category not found');
+            throw new CustomError.NotFoundError('Category not found');
         }
 
-        const imageName =  findCategory.image;
+        if (deleteAutomatic) {
+            const deletedNewsCount = await News.deleteMany({ category: categoryId })
+            console.log(deletedNewsCount);
+        }
+
+
+        const imageName = findCategory.image;
         const deleteBlockBlobClient = categoryImagesContainerClient.getBlockBlobClient(imageName);
         await deleteBlockBlobClient.delete()
 
