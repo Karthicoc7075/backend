@@ -1,6 +1,8 @@
 const { default: mongoose } = require('mongoose')
 const Class = require('../models/class_model')
 const Subject = require('../models/subject_model')
+const Material = require('../models/material_model')
+const Slider = require('../models/slider_model')
 const CustomError = require('../errors');
 const { classImagesContainerClient, subjectImagesContainerClient } = require('../services/azure/azureService');
 
@@ -31,7 +33,7 @@ exports.createClass = async (req, res, next) => {
         const newClass = new Class({
             className,
             image: imageName,
-            createdBy: req.userId 
+            createdBy: req.user.userId 
         })
 
         await newClass.save()
@@ -147,6 +149,16 @@ exports.deleteClass = async (req, res, next) => {
 
         await delteBlockBlobClient.delete()
 
+        const materials = await Material.find({ class: classId });
+        const materialIds = materials.map(material => material._id);
+        const deleteMaterialSliders = await Slider.deleteMany({ material: { $in: materialIds } });
+        const deleteMaterials = await Material.deleteMany({ class: classId });
+        const deleteSliders = await Slider.deleteMany({ class: classId });
+        
+
+        console.log('deleteMaterialSliders', deleteSliders);
+        console.log('deleteMaterials', deleteMaterials);
+        console.log('deleteSliders', deleteSliders);
         const deletedClass = await Class.findByIdAndDelete({ _id: classId }, { new: true })
 
         res.status(200).json({ message: 'Class deleted successfully', data: deletedClass })
@@ -195,7 +207,6 @@ exports.createClassSubject = async (req, res, next) => {
 
 exports.getClassSubjects = async (req, res, next) => {
     const { classId } = req.params
-    let isfliterLoop = false;
     try {
         const findClass = await Class.findById({ _id: classId })
 
@@ -207,11 +218,7 @@ exports.getClassSubjects = async (req, res, next) => {
         const AllSubjects = await Promise.all(findClass.subjects.map(async (subjectId) => {
             try {
                 const subject = await Subject.findById(subjectId.toString());
-                if (!subject) {
-                    await Class.findByIdAndUpdate(classId, { $pull: { subjects: subjectId } }, { new: true });
-                    isfliterLoop = true
-                    return null ;
-                }
+               
                 subject.image = subjectImagesContainerClient.url + '/' + subject.image;
                 return subject;
             } catch (err) {
@@ -219,14 +226,13 @@ exports.getClassSubjects = async (req, res, next) => {
             }
         }));
 
-    
-          let   classSubject = AllSubjects.filter(subject => subject != null);
+
       
 
 
 
 
-        res.status(200).json({ data:classSubject  })
+        res.status(200).json({ data: AllSubjects })
     } catch (err) {
         next(err)
     }

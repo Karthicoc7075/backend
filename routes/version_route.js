@@ -1,15 +1,16 @@
 const express = require('express');
-const tokenVerify  = require('../middleware/tokenVerify');
+const auth = require('../middleware/auth');
+const roles = require('../config/roles');
 
 const versionRouter = express.Router();
 
 const { createVersion, getAllVersions,getVersion,updateVersion, deleteVersion } = require('../controllers/version_controller');
 
-versionRouter.post('/create', tokenVerify, createVersion);
-versionRouter.get('/allVersions', tokenVerify, getAllVersions);
-versionRouter.get('/:versionId', tokenVerify, getVersion);
-versionRouter.put('/update/:versionId', tokenVerify, updateVersion);
-versionRouter.delete('/delete/:versionId', tokenVerify, deleteVersion);
+versionRouter.post('/create', auth([roles.ADMIN]),  createVersion);
+versionRouter.get('/allVersions', auth([roles.ADMIN]),  getAllVersions);
+versionRouter.get('/:versionId', auth([roles.ADMIN]),  getVersion);
+versionRouter.put('/update/:versionId', auth([roles.ADMIN]),  updateVersion);
+versionRouter.delete('/delete/:versionId', auth([roles.ADMIN]),  deleteVersion);
 
 
 module.exports = versionRouter;

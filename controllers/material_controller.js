@@ -1,4 +1,5 @@
 const Material = require('../models/material_model');
+const Slider = require('../models/slider_model');
 const CustomError = require('../errors');
 const { materialImagesContainerClient, materialContainerClient } = require('../services/azure/azureService');
 const axios = require('axios');
@@ -41,7 +42,7 @@ exports.createMaterial = async (req, res, next) => {
         const fileSize =  fileSizeBytes >= megabyte ? `${(fileSizeBytes / megabyte).toFixed(2)}MB`: `${(fileSizeBytes / kilobyte).toFixed(2)}KB`
 
 
-            updatedData = { title, class: classId, subject: subjectId, medium: mediumId, fileType, fileLink, fileSize, image: imageName, createdBy: req.userId }
+            updatedData = { title, class: classId, subject: subjectId, medium: mediumId, fileType, fileLink, fileSize, image: imageName, createdBy: req.user.userId }
         } else if (fileType == "uploadFile") {
             if (!req.files.file || !req.files.image) {
                 throw new CustomError.BadRequestError('File is required');
@@ -58,7 +59,7 @@ exports.createMaterial = async (req, res, next) => {
             }
             const fileSizeBytes = file.size
             const fileSize = fileSizeBytes >= megabyte ? `${(fileSizeBytes / megabyte).toFixed(2)}MB`: `${(fileSizeBytes / kilobyte).toFixed(2)}KB`
-            updatedData = { title, class: classId, subject: subjectId, medium: mediumId, fileType, fileLink: fileName, fileSize, image: imageName, createdBy: req.userId }
+            updatedData = { title, class: classId, subject: subjectId, medium: mediumId, fileType, fileLink: fileName, fileSize, image: imageName, createdBy: req.user.userId }
         } else {
             throw new CustomError.BadRequestError("File type invaild")
         }
@@ -303,7 +304,8 @@ exports.deleteMaterial = async (req, res, next) => {
             await delteFileBlockBlobClient.delete()
         }
 
-
+        const deleteSlider = await Slider.deleteMany({ material: materialId });
+        console.log('deleteSlider', deleteSlider);
 
         const deletedMaterial = await Material.findByIdAndDelete({ _id: materialId }, { new: true })
         res.status(200).json({ message: 'Material deleted successfully', data: deletedMaterial });

@@ -6,19 +6,21 @@ const CustomError = require('../errors');
 
 exports.register = async (req, res,next) => {
     try {
-        const { username, email, password } = req.body;
+        const { username, email, password,role,status } = req.body;
 
-        if ( !username || !email || !password) {
+        if ( !username || !email || !password || !role || !status) {
             throw new CustomError.BadRequestError('All fields are required');
         }
     
-        const existingUser = await DashboardUser.findOne({ email: email });
+        let existingUser = await DashboardUser.findOne({ email: email });
         if (existingUser) {
           throw new CustomError.BadRequestError('User already exists');
        
           
         }
-          if(existingUser && existingUser.username === username){
+         existingUser = await DashboardUser.findOne({username: username});
+
+          if(existingUser && existingUser.username == username){
             throw new CustomError.BadRequestError('Username already exists');
         }
       
@@ -28,17 +30,57 @@ exports.register = async (req, res,next) => {
         const user = new DashboardUser({
             username: username,
             password: hashedPassword,
-            email: email
+            email: email,
+            role:role,
+            status:status
         });
     
         const newUser = await user.save();
-        const token = jwt.sign({ userId: newUser._id }, secretKey, { expiresIn: '1h' });
+        const token = jwt.sign({ userId: newUser._id,role:newUser.role }, secretKey, { expiresIn: '24h' });
         const data = { auth: newUser, token};
         return res.status(201).json({ message: 'User registered successfully', data });
     } catch (error) {
       next(error)
     }
 };
+
+exports.updateUser = async(req,res,next) => {
+    const userId = req.params.userId;
+    
+    try {
+        const { username, email, role, status } = req.body;
+        if (!username || !email || !role || !status) {
+            throw new CustomError.BadRequestError('All fields are required');
+        }
+        const user = await DashboardUser.findById(userId);
+        if (!user) {
+            throw new CustomError.NotFoundError('User not found');
+        }
+        
+        const userUpdatedData = { username, email, role, status };
+     const updatedUser=   await DashboardUser.findByIdAndUpdate(userId, userUpdatedData, { new: true });
+
+        return res.status(200).json({ message: 'User updated successfully', data:updatedUser });
+    } catch (error) {
+        next(error)
+    }
+}
+
+exports.deleteUser = async(req,res,next) => {
+    const userId = req.params.userId;
+    try {
+        const user = await DashboardUser.findById(userId);
+
+        if (!user) {
+            throw new CustomError.NotFoundError('User not found');
+        }
+
+        const deletedUser = await DashboardUser.findByIdAndDelete(userId);
+        return res.status(200).json({ message: 'User deleted successfully', data: deletedUser });
+    } catch (error) {
+        next(error)
+    }
+}
 
 
 exports.login = async (req, res,next) => {
@@ -50,17 +92,22 @@ exports.login = async (req, res,next) => {
         }
 
         const existingUser = await DashboardUser.findOne({username: username});
-        
+
         if(!existingUser){
        throw new CustomError.BadRequestError('User does not exist');
         }
+
 
         const isPasswordValid = await bcrypt.compare(password, existingUser.password);
         if (!isPasswordValid) {
           throw new CustomError.BadRequestError('Wrong password');
         }
 
-        const token = jwt.sign({ userId: existingUser._id }, secretKey, { expiresIn: '10h' });
+        if(existingUser.status == 'inactive'){
+            throw new CustomError.BadRequestError('User is inactive');
+        }
+
+        const token = jwt.sign({ userId: existingUser._id,role:existingUser.role }, secretKey, { expiresIn: '24h' });
         const userData = { username: existingUser.username, email: existingUser.email, _id: existingUser._id, role: existingUser.role};
         const data = { auth:userData, token};
         return res.status(200).json({ message: 'User logged in successfully', data});
@@ -69,6 +116,8 @@ exports.login = async (req, res,next) => {
         next(error)
     } 
 }       
+
+
 
 exports.logout = async (req, res) => {
     try {
@@ -82,16 +131,16 @@ exports.changePassword = async (req, res,next) => {
     try {
         const { oldPassword, newPassword } = req.body;
 
-        if (!oldPassword || !newPassword || !username) {
+        if (!oldPassword || !newPassword ) {
             throw new CustomError.BadRequestError('All fields are required');
         }
 
         
-    
+    console.log(req.user);
         
 
 
-        const user = await DashboardUser.findById(req.userId);
+        const user = await DashboardUser.findById(req.user.userId);
 
 
 

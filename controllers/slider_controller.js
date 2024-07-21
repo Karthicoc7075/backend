@@ -20,15 +20,15 @@ exports.createSlider = async (req, res, next) => {
 
         let sliderData;
         if (sliderType == 'nothing') {
-            sliderData = { title, image: imageName, sliderType };
+            sliderData = { title, image: imageName, sliderType,createdBy:req.user.userId };
         } else if (sliderType == 'news') {
-            sliderData = { title, image: imageName, news: newsId, sliderType };
+            sliderData = { title, image: imageName, news: newsId, sliderType,createdBy:req.user.userId };
         } else if (sliderType === 'link') {
-            sliderData = { title, image: imageName, link, sliderType };
+            sliderData = { title, image: imageName, link, sliderType,createdBy:req.user.userId };
         } else if (sliderType === 'material') {
-            sliderData = { title, image: imageName, post: materialId, sliderType };
+            sliderData = { title, image: imageName, post: materialId, sliderType,createdBy:req.user.userId };
         } else if (sliderType === 'class') {
-            sliderData = { title, image: imageName, class: classId, sliderType };
+            sliderData = { title, image: imageName, class: classId, sliderType,createdBy:req.user.userId };
         } else {
             throw new CustomError.BadRequestError('Invalid slider type');
 

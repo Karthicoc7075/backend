@@ -1,6 +1,8 @@
 const Medium = require('../models/medium_model');
 const CustomError = require('../errors');
 const { mediumImagesContainerClient } = require('../services/azure/azureService');
+const Material = require('../models/material_model');
+const Slider = require('../models/slider_model');
 
 exports.createMedium = async (req, res, next) => {
     const { mediumName } = req.body;
@@ -26,7 +28,7 @@ exports.createMedium = async (req, res, next) => {
             throw new CustomError.InternalServerError('Failed to upload image');
         }
 
-        const createMedium = await Medium.create({ mediumName, image: imageName, createdBy: req.userId  });
+        const createMedium = await Medium.create({ mediumName, image: imageName, createdBy: req.user.userId  });
         createMedium.image = mediumImagesContainerClient.url + '/' + createMedium.image;
         res.status(201).json({ data: createMedium, success: true, message: 'Medium created successfully' });
     } catch (err) {
@@ -128,6 +130,13 @@ exports.deleteMedium = async (req, res,next) => {
         const deleteBlockBlobClient = mediumImagesContainerClient.getBlockBlobClient(imageName);
         await deleteBlockBlobClient.delete()
 
+        const materials = await Material.find({ medium: mediumId })
+        const materialIds = materials.map(material => material._id)
+        const deletedMaterialSlider = await Slider.deleteMany({ material: { $in: materialIds } })
+        const deletedMaterial = await Material.deleteMany({ medium: mediumId })
+
+        console.log('delteMaterial',deletedMaterial);
+        console.log('deleteSlider',deletedMaterialSlider);
 
         const deletedClass = await Medium.findByIdAndDelete({ _id: mediumId }, { new: true })
         res.status(200).json({ message: 'Medium deleted successfully', data: deletedClass })

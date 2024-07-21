@@ -2,6 +2,7 @@ const News = require('../models/news_model');
 const CustomError = require('../errors');
 const { newsImageContainerClient} = require('../services/azure/azureService');
 const { find } = require('../models/category_model');
+const Slider = require('../models/slider_model');
 
 
 exports.createNews = async(req, res,next) => {
@@ -31,7 +32,7 @@ exports.createNews = async(req, res,next) => {
         language:languageId,
         image:imageName,
         category:categoryId,
-        createdBy:req.userId 
+        createdBy:req.user.userId 
     });
 
     const createdNews =await news.save();
@@ -128,6 +129,10 @@ exports.deleteNews = async(req, res,next) => {
         const imageName =findNews.image;
         const deleteBlobClient = newsImageContainerClient.getBlockBlobClient(imageName);
         await deleteBlobClient.delete();
+
+        const deletedSlider = await Slider.deleteMany({news:newsId})
+
+        console.log('deletedSlider',deletedSlider);
 
         const deletedNews = await News.findByIdAndDelete({_id:newsId})
         res.status(200).send({data:deletedNews,message:'News deleted successfully'})

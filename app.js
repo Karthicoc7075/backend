@@ -8,6 +8,7 @@ const port = process.env.PORT || 8000;
 
 
 const dashboardAuthRoutes = require('./routes/dashboard_auth_route'); 
+const dashboardRoutes = require('./routes/dashboard_route');
 const classRoutes = require('./routes/class_route');
 const subjectRoutes = require('./routes/subject_route');
 const mediumRoutes = require('./routes/medium_route');
@@ -37,6 +38,8 @@ app.use(helmet());
 app.get('/', (req, res) => {    
     res.send('Welcome to the API');
 }   );
+
+app.use('/api/v2/dashboard',dashboardRoutes);
 app.use('/api/v2/dashboard/auth',dashboardAuthRoutes);
 app.use('/api/v2/class',classRoutes);
 app.use('/api/v2/subject',subjectRoutes);

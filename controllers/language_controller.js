@@ -2,6 +2,7 @@ const Language = require('../models/language_model');
 const News = require('../models/news_model');
 const CustomError = require('../errors');
 const { languageImagesContainerClient } = require('../services/azure/azureService');
+const Slider = require('../models/slider_model');
 
 exports.createLanguage = async (req, res,next) => {
     const { languageName } = req.body;
@@ -26,7 +27,7 @@ exports.createLanguage = async (req, res,next) => {
                 throw new CustomError.InternalServerError('Failed to upload image');
             }
 
-        const createLanguage = await Language.create({ languageName,image:imageName, createdBy: req.userId });
+        const createLanguage = await Language.create({ languageName,image:imageName, createdBy: req.user.userId });
         createLanguage.image = languageImagesContainerClient.url + '/' + createLanguage.image;
         res.status(201).json({ data: createLanguage, message: 'Language created successfully' });
     } catch (err) {
@@ -123,7 +124,6 @@ exports.updateLanguage = async (req, res,next) => {
 
 exports.deleteLanguage = async (req, res,next) => {
     const { languageId } = req.params;
-    const {deleteAutomatic} = req.body
 
     console.log(req.body);  
     try {
@@ -132,16 +132,17 @@ exports.deleteLanguage = async (req, res,next) => {
            throw new CustomError.NotFoundError('Language not found');
         }
 
-
-        
-if(deleteAutomatic){
-    const deletedNewsCount = await News.deleteMany({language:languageId})
-    console.log(deletedNewsCount);
-}
-
         const imageName =  findLanguage.image
         const deleteBlockBlobClient = languageImagesContainerClient.getBlockBlobClient(imageName);
         await deleteBlockBlobClient.delete()
+
+    const news = await News.find({language:languageId})
+    const newsIds = news.map(news => news._id)
+    const deleteSlider = await Slider.deleteMany({news:{$in:newsIds}})
+    const deleteLangauge = await News.deleteMany({language:languageId})
+    
+    console.log(deleteSlider);
+    console.log(deleteLangauge);
 
 
 

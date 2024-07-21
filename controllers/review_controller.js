@@ -13,11 +13,11 @@ exports.createReview = async(req, res,next) => {
         const review = new Review({
             comment,
             rating,
-            userId:req.body.userId 
+            userId:req.user.userId 
         });
 
 
-        const user = await User.findById({_id:req.userId})
+      
 
 
         const createReview =await review.save();

@@ -1,6 +1,9 @@
 const Subject = require('../models/subject_model');
 const CustomError = require('../errors');
 const { subjectImagesContainerClient } = require('../services/azure/azureService');
+const Class = require('../models/class_model');
+const Material = require('../models/material_model');
+const Slider = require('../models/slider_model');
 
 exports.createSubject = async (req, res,next) => {
     const { subjectName } = req.body;
@@ -25,7 +28,7 @@ exports.createSubject = async (req, res,next) => {
                 throw new CustomError.InternalServerError('Failed to upload image');
             }
 
-        const createSubject = await Subject.create({ subjectName,image:imageName, createdBy: req.userId });
+        const createSubject = await Subject.create({ subjectName,image:imageName, createdBy: req.user.userId });
         createSubject.image = subjectImagesContainerClient.url + '/' + createSubject.image;
         res.status(201).json({ data: createSubject, message: 'Subject created successfully' });
     } catch (err) {
@@ -133,15 +136,23 @@ exports.deleteSubject = async (req, res,next) => {
         if (!subject) {
            throw new CustomError.NotFoundError('Subject not found');
         }
+      
 
-        const imageName =  subject.image
-        const deleteBlockBlobClient = subjectImagesContainerClient.getBlockBlobClient(imageName);
-        await deleteBlockBlobClient.delete()
+        // const imageName =  subject.image
+        // const deleteBlockBlobClient = subjectImagesContainerClient.getBlockBlobClient(imageName);
+        // await deleteBlockBlobClient.delete()
 
+        const deletedClassSubject = await Class.updateMany({ subjects: subjectId }, { $pull: { subjects: subjectId } }, { new: true });
+        const materials = await Material.find({ subject: subjectId });
+        const materialIds = materials.map(material => material._id);
+        const deleteMaterialSliders = await Slider.deleteMany({ material: { $in: materialIds } });
+        const deleteMaterials =   await Material.deleteMany({ subject: subjectId });
 
-
-        const deletedClass = await Subject.findByIdAndDelete({ _id: subjectId }, { new: true })
-        res.status(200).json({ message: 'Subject deleted successfully', data: deletedClass })
+      console.log('deleteMaterialSliders', deleteMaterialSliders);
+      console.log('deleteMaterials', deleteMaterials);
+        console.log('deleteClassSubject', deletedClassSubject);
+        const deletedSubject = await Subject.findByIdAndDelete({ _id: subjectId }, { new: true })
+        res.status(200).json({ message: 'Subject deleted successfully', data: deletedSubject })
 
     } catch (err) {
         next(err);

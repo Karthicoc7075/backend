@@ -13,7 +13,7 @@ exports.createSupport = async(req, res,next) => {
         const support = new Support({
             title,
             message,
-            userId:req.userId 
+            userId:req.user.userId 
         });
 
         const createSupport =await support.save();

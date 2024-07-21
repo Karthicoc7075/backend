@@ -13,7 +13,8 @@ exports.createVersion = async(req, res,next) => {
             title,
             code,
             description,
-            status
+            status,
+            createdBy:req.user.userId
         });
 
         const createVersion =await version.save();

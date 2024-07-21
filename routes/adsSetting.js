@@ -3,6 +3,7 @@ const {getAdsSettings,getAppSettings,createAdsSettings,createAppSettings,updateA
 const settingRoute = Router();
 
 
+
 settingRoute.get('/ads/get',getAdsSettings);
 settingRoute.post('/ads/create',createAdsSettings);
 settingRoute.put('/ads/update',updateAdsSettings);

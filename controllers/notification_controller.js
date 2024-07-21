@@ -22,7 +22,8 @@ exports.createNotification = async(req, res,next) => {
         const notification = new Notification({
             title,
             description,
-            image:imageName
+            image:imageName,
+            createdBy:req.user.userId
         });
 
         const createNotification =await notification.save();

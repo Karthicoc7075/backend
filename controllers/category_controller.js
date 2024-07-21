@@ -26,7 +26,7 @@ exports.createCategory = async (req, res, next) => {
             throw new CustomError.BadRequestError('Failed to upload image');
         }
 
-        const createCategory = await Category.create({ categoryName, image: imageName, createdBy: req.userId });
+        const createCategory = await Category.create({ categoryName, image: imageName, createdBy: req.user.userId });
         createCategory.image = categoryImagesContainerClient.url + '/' + createCategory.image;
         res.status(201).json({ data: createCategory, message: 'Category created successfully' });
     } catch (err) {
@@ -126,7 +126,6 @@ exports.updateCategory = async (req, res, next) => {
 
 exports.deleteCategory = async (req, res, next) => {
     const { categoryId } = req.params;
-    const { deleteAutomatic } = req.body;
 
     try {
         const findCategory = await Category.findOne({ _id: categoryId })
@@ -134,17 +133,17 @@ exports.deleteCategory = async (req, res, next) => {
             throw new CustomError.NotFoundError('Category not found');
         }
 
-        if (deleteAutomatic) {
-            const deletedNewsCount = await News.deleteMany({ category: categoryId })
-            console.log(deletedNewsCount);
-        }
-
-
         const imageName = findCategory.image;
         const deleteBlockBlobClient = categoryImagesContainerClient.getBlockBlobClient(imageName);
         await deleteBlockBlobClient.delete()
 
-
+          const news = await News.find({ category: categoryId })
+        const newsIds = news.map(news => news._id)
+        const deletedSlider = await News.deleteMany({ _id: { $in: newsIds } })
+            const deletedNews = await News.deleteMany({ category: categoryId })
+            
+            console.log('deletedSlider', deletedSlider)
+            console.log('deletedNews', deletedNews);
 
         const deletedClass = await Category.findByIdAndDelete({ _id: categoryId }, { new: true })
         res.status(200).json({ message: 'Category deleted successfully', data: deletedClass })

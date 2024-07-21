@@ -14,7 +14,7 @@ exports.createReport = async(req, res,next) => {
         const report = new Report({
             postId,
             description:desc,
-            userId:req.userId 
+            userId:req.user.userId 
         });
 
         const createReport =await report.save();

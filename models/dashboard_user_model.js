@@ -16,7 +16,13 @@ const dashboardUserSchema = new mongoose.Schema({
     },
     role: {
         type: String,
-        default: 'admin'
+        default: 'user',
+        enum: ['user', 'admin']
+    },
+    status: {
+        type: String,
+        default: 'active',
+        enum: ['active', 'inactive']
     },
     createdAt: {
         type: Date,

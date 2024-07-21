@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { create } = require('./language_model');
 
 const versionSchema = new mongoose.Schema({
     title: {
@@ -16,6 +17,11 @@ const versionSchema = new mongoose.Schema({
     status:{
         type: Boolean,
         default: true
+    },
+    createdBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required:true
     },
     createdAt: {
         type: Date,
